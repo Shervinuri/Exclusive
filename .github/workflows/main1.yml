@@ -1,0 +1,33 @@
+name: Refine VLESS Configs
+
+on:
+  schedule:
+    - cron: '*/20 * * * *'  # هر 20 دقیقه یک بار
+  workflow_dispatch:        # اجرای دستی هم فعال باشه
+
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run refine script
+        run: python refine.py
+
+      - name: Commit & Push updated configs
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add configs/Шервин.txt
+          git commit -m "Auto refine VLESS configs" || echo "No changes"
+          git push
