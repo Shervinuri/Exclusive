@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: pip install pyyaml requests
 
-      - name: Generate clash-sub.yaml
+      - name: Generate CollecSHEN0.yaml
         run: |
           python3 refine.py
 
@@ -32,6 +32,6 @@ jobs:
         run: |
           git config --global user.name "ShervinBot"
           git config --global user.email "shervin@example.com"
-          git add clash-sub.yaml
+          git add git add CollecSHEN.yaml
           git commit -m "🔄 Auto-generate clash-sub.yaml from CollecSHEN.txt" || echo "No changes"
           git push
