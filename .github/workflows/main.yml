@@ -2,7 +2,7 @@ name: Refine VLESS Configs
 
 on:
   schedule:
-    - cron: '*/10 * * * *'  # هر 10 دقیقه یک بار
+    - cron: '*/30 * * * *'  # هر 30 دقیقه یک بار
   workflow_dispatch:        # اجرای دستی هم فعال باشه
 
 jobs:
