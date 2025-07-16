@@ -1,72 +1,95 @@
-import requests, re
+import requests
+import yaml
 
-INPUT = "configs/CollecSHEN.txt"
-OUTPUT = "configs/Шервин.txt"
-REMARK = "☬SHΞN™"
+SOURCE_URL = "https://raw.githubusercontent.com/Shervinuri/V4ray/main/configs/CollecSHEN.txt"
+OUTPUT_FILE = "CollecSHEN.yaml"
 
-def get_country_flag(ip):
+def parse_vless_url(url):
     try:
-        r = requests.get(f"https://ipapi.co/{ip}/country/", timeout=3)
-        if r.ok:
-            code = r.text.strip().upper()
-            if len(code) == 2:
-                return chr(127397 + ord(code[0])) + chr(127397 + ord(code[1]))
+        if not url.startswith("vless://"):
+            return None
+
+        content = url[8:]
+        main, remark = content.split("#") if "#" in content else (content, "Unnamed")
+        userinfo, address = main.split("@")
+        uuid = userinfo.split("?")[0]
+        server_port, params = address.split("?", 1) if "?" in address else (address, "")
+        server, port = server_port.split(":")
+        network = "tcp"
+        path = ""
+        host = ""
+
+        if "type=grpc" in params:
+            network = "grpc"
+        elif "type=ws" in params or "ws=" in params:
+            network = "ws"
+
+        for part in params.split("&"):
+            if part.startswith("path="):
+                path = part.split("=", 1)[1]
+            if part.startswith("host="):
+                host = part.split("=", 1)[1]
+
+        proxy = {
+            "name": remark.strip(),
+            "type": "vless",
+            "server": server,
+            "port": int(port),
+            "uuid": uuid,
+            "tls": True,
+            "network": network,
+        }
+
+        if network == "ws":
+            proxy["ws-opts"] = {
+                "path": path,
+                "headers": {"Host": host or server}
+            }
+        elif network == "grpc":
+            proxy["grpc-opts"] = {
+                "grpc-service-name": "default"
+            }
+
+        return proxy
     except:
-        pass
-    return "ناکجا آباد 🚏"
+        return None
 
-def extract_ip(config):
-    try:
-        m = re.search(r'@([\d.]+)', config)
-        return m.group(1) if m else ""
-    except:
-        return ""
+def generate_yaml():
+    res = requests.get(SOURCE_URL)
+    lines = res.text.strip().splitlines()
+    proxies = []
 
-def extract_type(config):
-    if "grpc" in config.lower():
-        return "grpc"
-    if "ws" in config.lower():
-        return "ws"
-    return "?"
+    for line in lines:
+        line = line.strip()
+        if line.startswith("vless://"):
+            proxy = parse_vless_url(line)
+            if proxy:
+                proxies.append(proxy)
 
-def refine_vless_configs():
-    with open(INPUT, 'r') as f:
-        raw = f.read().splitlines()
-
-    clean_configs = []
-    seen = set()
-
-    for c in raw:
-        c = c.strip()
-        if not c.startswith("vless://") or c in seen:
-            continue
-
-        ip = extract_ip(c)
-        if not ip:
-            continue
-
-        # اتصال به سرور برای تست
-        try:
-            requests.get(f"http://{ip}", timeout=3)
-        except:
-            continue  # اگر وصل نشد حذفش کن
-
-        country_flag = get_country_flag(ip)
-        net_type = extract_type(c)
-        c = c.split('#')[0] + f"#{REMARK} {country_flag} {net_type}"
-        clean_configs.append(c)
-        seen.add(c)
-
-    if not clean_configs:
-        print("⛔ هیچ کانفیگ سالمی پیدا نشد.")
+    if not proxies:
+        print("⛔ هیچ کانفیگ معتبری یافت نشد.")
         return
 
-    with open(OUTPUT, 'w') as f:
-        f.write("درود بر یاران جان\nشروین ۱۰ دقیقه دیگه\nمجدد این لیست رو آپدیت میکنه پس اگر کانفیگ خوبی پیدا کردی منتقل کن یجا دیگه چون ممکنه\nکه این بره یکی بهتر بیاد جاش 😁\n\n")
-        for c in clean_configs:
-            f.write(c + '\n')
+    proxy_names = [p['name'] for p in proxies]
 
-    print(f"✅ ذخیره شد: {len(clean_configs)} کانفیگ سالم در {OUTPUT}")
+    yaml_content = {
+        "proxies": proxies,
+        "proxy-groups": [
+            {
+                "name": "SHΞN AUTO",
+                "type": "select",
+                "proxies": proxy_names
+            }
+        ],
+        "rules": [
+            "MATCH,SHΞN AUTO"
+        ]
+    }
+
+    with open(OUTPUT_FILE, "w") as f:
+        yaml.dump(yaml_content, f, allow_unicode=True)
+
+    print(f"✅ Clash YAML ساخته شد ({len(proxies)} کانفیگ) → {OUTPUT_FILE}")
 
 if __name__ == "__main__":
-    refine_vless_configs()
+    generate_yaml()
