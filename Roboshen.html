@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ROBO☬SHΞN™ - Beta</title>
+    <style>
+        :root {
+            --shen-eye: #00eaff;
+            --shen-glow: rgba(0, 234, 255, 0.5);
+            --shen-border: #333;
+            --shen-dark: #000;
+            --shen-medium: #1a1a1a;
+            --shen-screen: #050505;
+            --shen-text: #e0e0e0;
+            --shen-text-dark: #000;
+            --shen-placeholder: #888;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            background: var(--shen-dark);
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            color: var(--shen-text);
+            overflow: hidden;
+            transition: transform 0.5s ease-in-out, filter 0.5s ease-in-out;
+        }
+
+        #app-container { position: relative; width: 100%; height: 100%; }
+
+        #robot-wrapper {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            transition: top 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #chat-container-wrapper {
+            position: absolute;
+            width: 95%;
+            max-width: 600px;
+            left: 50%;
+            top: calc(50% + 35vmin);
+            transform: translateX(-50%);
+            z-index: 5;
+            display: flex;
+            justify-content: center;
+            transition: top 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #chat-container {
+            width: 100px;
+            height: 0;
+            background: rgba(26, 26, 26, 0.9);
+            border: 2px solid var(--shen-border);
+            border-radius: 12px;
+            box-shadow: 0 0 25px var(--shen-glow);
+            opacity: 0;
+            overflow: hidden;
+        }
+
+        #chat-content { opacity: 0; }
+
+        @keyframes shen-descend { to { height: 500px; } }
+        @keyframes shen-expand { to { width: 100%; } }
+        @keyframes shen-fade-in { to { opacity: 1; } }
+
+        .intro-played #robot-wrapper { top: calc(20px + 35vmin); }
+        .intro-played #chat-container-wrapper { top: calc(20px + 70vmin - 120px); }
+        .intro-played #chat-container {
+            opacity: 1;
+            animation: shen-descend 1s cubic-bezier(0.4, 0, 0.2, 1) 1.2s forwards,
+                       shen-expand 1s cubic-bezier(0.4, 0, 0.2, 1) 2.2s forwards;
+        }
+        .intro-played #chat-content { animation: shen-fade-in 0.8s ease-out 3.2s forwards; }
+
+        html.layout-settled, body.layout-settled {
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        body.layout-settled {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 10px;
+            height: auto;
+        }
+
+        body.layout-settled #app-container { position: static; display: contents; }
+        body.layout-settled #robot-wrapper,
+        body.layout-settled #chat-container-wrapper {
+            position: static;
+            transform: none;
+            width: 100%;
+            height: auto;
+            display: flex;
+            justify-content: center;
+        }
+        body.layout-settled #robot-wrapper { margin-bottom: -120px; max-width: 280px; z-index: 10; }
+        body.layout-settled #chat-container-wrapper { max-width: 600px; }
+        body.layout-settled #chat-container {
+            width: 100%;
+            height: auto;
+            padding: 130px 24px 24px;
+            max-height: none;
+            overflow: visible;
+        }
+        body.layout-settled #chat-content { opacity: 1; }
+        body.layout-settled .footer { position: static; margin-top: 20px; }
+
+        #intro-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            padding-bottom: 15vh;
+            color: #555;
+            font-size: 14px;
+            cursor: pointer;
+            animation: shen-fade-in 2s 1s ease-in-out forwards;
+            opacity: 0;
+        }
+
+        .robot-container { width: 70vmin; height: 70vmin; max-width: 280px; max-height: 280px; flex-shrink: 0; }
+        .robot-frame {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(145deg, #2a2a2a, var(--shen-medium));
+            border-radius: 22%;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5), 10px 10px 30px #0a0a0a, -10px -10px 30px #202020;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        #faceCanvas { width: 80%; height: 75%; cursor: pointer; }
+        .engraved-text {
+            position: absolute;
+            bottom: 4.5%;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: clamp(10px, 4vmin, 18px);
+            font-weight: bold;
+            color: #252525;
+            text-shadow: 1px 1px 1px #111, 0 0 0 #000, 0 0 3px #111;
+            letter-spacing: 2px;
+            pointer-events: none;
+        }
+        #chat-content { display: flex; flex-direction: column; height: 100%; }
+        #chat-history {
+            flex-grow: 1;
+            min-height: 200px;
+            height: 35vh;
+            overflow-y: auto;
+            border: 1px solid var(--shen-border);
+            background: var(--shen-screen);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 12px;
+        }
+        #chat-history::-webkit-scrollbar { width: 8px; }
+        #chat-history::-webkit-scrollbar-track { background: transparent; }
+        #chat-history::-webkit-scrollbar-thumb { background: var(--shen-eye); border-radius: 10px; border: 2px solid var(--shen-screen); }
+        .message {
+            padding: 10px 16px;
+            border-radius: 18px;
+            max-width: 85%;
+            word-wrap: break-word;
+            line-height: 1.5;
+            animation: shen-fade-in 0.3s ease-in-out;
+        }
+        .user {
+            background: var(--shen-eye);
+            color: var(--shen-text-dark);
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+            font-weight: 500;
+        }
+        .bot {
+            background: #383838;
+            color: var(--shen-text);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        #chat-form { display: flex; flex-direction: column; align-items: center; gap: 15px; }
+        #user-input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid var(--shen-border);
+            border-radius: 8px;
+            background: var(--shen-screen);
+            color: var(--shen-text);
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        #user-input:focus { border-color: var(--shen-eye); box-shadow: 0 0 10px var(--shen-glow); }
+        #user-input::placeholder {
+            color: var(--shen-placeholder);
+            background: linear-gradient(45deg, var(--shen-placeholder) 35%, var(--shen-text) 50%, var(--shen-placeholder) 65%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-size: 300% 100%;
+            animation: shen-placeholder-wave 3s linear infinite;
+        }
+        @keyframes shen-placeholder-wave { 0% { background-position: 100% 50%; } 100% { background-position: -100% 50%; } }
+        .button-frame {
+            width: 80px;
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(145deg, #303030, #181818);
+            border-radius: 24px;
+            box-shadow: inset 0 0 4px rgba(0,0,0,0.8), 8px 8px 16px #0a0a0a, -8px -8px 16px #282828;
+            transition: transform 0.2s;
+        }
+        .button-frame:hover:not(:has(button:disabled)) { transform: scale(1.05); }
+        #chat-form button {
+            width: 60px;
+            height: 60px;
+            background: var(--shen-eye);
+            color: var(--shen-text-dark);
+            border: none;
+            border-radius: 18px;
+            cursor: pointer;
+            font-size: 28px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.3s;
+        }
+        #chat-form button:disabled { background: #555; color: #888; cursor: not-allowed; }
+        #loading-indicator {
+            align-self: center;
+            margin-bottom: -35px;
+            order: -1;
+            border: 4px solid #444;
+            border-top: 4px solid var(--shen-eye);
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            animation: shen-spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes shen-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .footer {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--shen-eye);
+            text-shadow: 0 0 8px var(--shen-glow);
+            pointer-events: none;
+        }
+        #rotate-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--shen-dark);
+            color: var(--shen-text);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 1000;
+        }
+        @media screen and (max-height: 500px) and (orientation: landscape) { #rotate-overlay { display: flex; } }
+        body.punishment-rotate { transform: rotate(180deg); }
+        body.punishment-blur { filter: blur(8px); }
+        @keyframes shen-shake {
+            0%, 100% { transform: translate(0, 0); }
+            10% { transform: translate(-2px, -3px); }
+            20% { transform: translate(3px, 2px); }
+            30% { transform: translate(-3px, 3px); }
+            40% { transform: translate(2px, -2px); }
+            50% { transform: translate(-3px, 2px); }
+            60% { transform: translate(3px, 3px); }
+            70% { transform: translate(-2px, -3px); }
+            80% { transform: translate(3px, -2px); }
+            90% { transform: translate(-2px, 3px); }
+        }
+        body.punishment-shake #app-container > *:not(#intro-overlay) {
+            animation: shen-shake 0.5s cubic-bezier(.36, .07, .19, .97) infinite;
+        }
+    </style>
+</head>
+<body>
+    <div id="rotate-overlay">
+        <div>
+            <h2>صاف بگیر دستت گوشیتو </h2>
+            <p> دسکتاپ و لپتاپ اینجا آنتن نمیده فقط موبایل ، اونم سیخ ! .</p>
+        </div>
+    </div>
+    <div id="app-container">
+        <div id="intro-overlay"><span>☬SHΞN™ - آماده برای بیداری</span></div>
+        <div id="robot-wrapper">
+            <div class="robot-container">
+                <div class="robot-frame">
+                    <canvas id="faceCanvas" width="300" height="300"></canvas>
+                    <div class="engraved-text">ROBO☬SHΞN™</div>
+                </div>
+            </div>
+        </div>
+        <div id="chat-container-wrapper">
+            <div id="chat-container">
+                <div id="chat-content">
+                    <div id="chat-history"></div>
+                    <form id="chat-form">
+                        <div id="loading-indicator"></div>
+                        <input type="text" id="user-input" placeholder="چی تو سرته؟ بنال ببینم..." autocomplete="off">
+                        <div class="button-frame"><button type="submit">☬</button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <footer class="footer"></footer>
+    </div>
+    <script>
+        // ☬SHΞN™ - Crafted with precision
+        class ShenBot {
+            #canvas; #ctx; #chat; #state; #timers; #look = { x: 0, y: 0 };
+            #blink = { progress: 1, active: false, last: Date.now() };
+            #focus = { active: false, eye: 'left', scale: 0.65, progress: 0, last: Date.now(), next: 5000 + Math.random() * 5000 };
+            #punishment = { active: false, type: null, hits: 0, resetTimer: null };
+
+            constructor(canvas, chat) {
+                this.#canvas = canvas;
+                this.#ctx = canvas.getContext('2d', { alpha: false });
+                this.#chat = chat;
+                this.#state = { expression: 'neutral', sleeping: true, thinking: false, lastInteraction: Date.now() };
+                this.#timers = { sleep: 20000, expression: null };
+                this.#initInteractions();
+                this.#render();
+            }
+
+            #render = () => {
+                this.#ctx.clearRect(0, 0, this.#canvas.width, this.#canvas.height);
+                this.#drawFaceplate();
+                const now = Date.now();
+
+                if (this.#state.sleeping) this.#drawSleepEyes();
+                else if (this.#state.thinking) this.#drawThinkingEyes(now);
+                else if (this.#punishment.active && this.#punishment.type === 'redEyes') this.#drawRedEyes();
+                else this.#drawExpression(now);
+
+                requestAnimationFrame(this.#render);
+            };
+
+            #drawFaceplate() {
+                const { width: w, height: h } = this.#canvas;
+                this.#ctx.fillStyle = '#050505';
+                this.#ctx.strokeStyle = '#333';
+                this.#ctx.lineWidth = 4;
+                this.#ctx.beginPath();
+                this.#ctx.roundRect(0, 0, w, h, 60);
+                this.#ctx.fill();
+                this.#ctx.stroke();
+            }
+
+            #drawExpression(now) {
+                const { width: w, height: h } = this.#canvas;
+                const eyeW = 100, eyeH = 100 * this.#blink.progress, eyeR = 30;
+                const eyeY = h / 2 + this.#look.y;
+                const leftX = w * 0.3 + this.#look.x, rightX = w * 0.7 + this.#look.x;
+
+                if (this.#state.expression === 'heart') {
+                    this.#drawPixelHeart(leftX, eyeY, 80);
+                    this.#drawPixelHeart(rightX, eyeY, 80);
+                } else {
+                    let leftScale = 1, rightScale = 1;
+                    if (this.#focus.active) {
+                        const scale = 1 - (1 - this.#focus.scale) * this.#focus.progress;
+                        this.#focus.eye === 'left' ? (leftScale = scale) : (rightScale = scale);
+                    }
+                    this.#drawEye(leftX, eyeY, eyeW * leftScale, eyeH * leftScale, eyeR * leftScale, '#00eaff', 'rgba(0, 234, 255, 0.5)');
+                    this.#drawEye(rightX, eyeY, eyeW * rightScale, eyeH * rightScale, eyeR * rightScale, '#00eaff', 'rgba(0, 234, 255, 0.5)');
+                }
+
+                if (this.#state.expression === 'neutral' && !this.#focus.active && !this.#blink.active && now - this.#focus.last > this.#focus.next) this.#startFocus();
+                if (this.#state.expression === 'neutral' && !this.#blink.active && !this.#focus.active && now - this.#blink.last > 3000 + Math.random() * 2000) this.#blinkEyes();
+                if (now - this.#state.lastInteraction > this.#timers.sleep && !this.#state.thinking && this.#state.expression === 'neutral' && !this.#punishment.active) this.#state.sleeping = true;
+            }
+
+            #drawEye(cx, cy, w, h, r, color, glow) {
+                this.#ctx.shadowBlur = 25;
+                this.#ctx.shadowColor = glow;
+                this.#ctx.fillStyle = color;
+                this.#ctx.beginPath();
+                this.#ctx.roundRect(cx - w / 2, cy - h / 2, w, h, r);
+                this.#ctx.fill();
+                this.#ctx.shadowBlur = 0;
+                this.#ctx.globalCompositeOperation = 'source-atop';
+                this.#ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                for (let i = 0; i < h; i += 3) this.#ctx.fillRect(cx - w / 2, cy - h / 2 + i, w, 1.5);
+                this.#ctx.globalCompositeOperation = 'source-over';
+            }
+
+            #drawRedEyes() {
+                const { width: w, height: h } = this.#canvas;
+                const eyeW = 110, eyeH = 110, eyeR = 35, eyeY = h / 2 + this.#look.y;
+                this.#drawEye(w * 0.3 + this.#look.x, eyeY, eyeW, eyeH, eyeR, '#ff1100', 'rgba(255, 17, 0, 0.7)');
+                this.#drawEye(w * 0.7 + this.#look.x, eyeY, eyeW, eyeH, eyeR, '#ff1100', 'rgba(255, 17, 0, 0.7)');
+            }
+
+            #drawPixelHeart(cx, cy, size) {
+                const bits = [
+                    [0, 1, 1, 0, 0, 1, 1, 0],
+                    [1, 1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1],
+                    [0, 1, 1, 1, 1, 1, 1, 0],
+                    [0, 0, 1, 1, 1, 1, 0, 0],
+                    [0, 0, 0, 1, 1, 0, 0, 0]
+                ];
+                const pixelSize = size / bits[0].length;
+                const totalW = pixelSize * bits[0].length, totalH = pixelSize * bits.length;
+                const startX = cx - totalW / 2, startY = cy - totalH / 2;
+                this.#ctx.fillStyle = '#FF99B4';
+                this.#ctx.shadowColor = 'rgba(255, 153, 180, 0.7)';
+                this.#ctx.shadowBlur = 15;
+                bits.forEach((row, y) => row.forEach((pixel, x) => {
+                    if (pixel) this.#ctx.fillRect(startX + x * pixelSize, startY + y * pixelSize, pixelSize, pixelSize);
+                }));
+                this.#ctx.shadowBlur = 0;
+            }
+
+            #drawSleepEyes() {
+                const { width: w, height: h } = this.#canvas;
+                const eyeW = 100, eyeH = 12, eyeR = eyeH / 2, eyeY = h / 2;
+                this.#ctx.fillStyle = '#00eaff';
+                this.#ctx.shadowColor = 'rgba(0, 234, 255, 0.5)';
+                this.#ctx.shadowBlur = 15;
+                this.#ctx.beginPath();
+                this.#ctx.roundRect(w * 0.3 - eyeW / 2, eyeY - eyeH / 2, eyeW, eyeH, eyeR);
+                this.#ctx.roundRect(w * 0.7 - eyeW / 2, eyeY - eyeH / 2, eyeW, eyeH, eyeR);
+                this.#ctx.fill();
+                this.#ctx.shadowBlur = 0;
+            }
+
+            #drawThinkingEyes(now) {
+                const { width: w, height: h } = this.#canvas;
+                const eyeY = h / 2 + this.#look.y, radius = 40;
+                const angle = (now / 500) % (2 * Math.PI);
+                [w * 0.3 + this.#look.x, w * 0.7 + this.#look.x].forEach(cx => {
+                    this.#ctx.strokeStyle = 'rgba(0, 234, 255, 0.7)';
+                    this.#ctx.lineWidth = 8;
+                    this.#ctx.shadowColor = 'rgba(0, 234, 255, 0.7)';
+                    this.#ctx.shadowBlur = 15;
+                    this.#ctx.beginPath();
+                    this.#ctx.arc(cx, eyeY, radius, angle, angle + Math.PI * 1.5);
+                    this.#ctx.stroke();
+                    this.#ctx.shadowBlur = 0;
+                });
+            }
+
+            #startFocus() {
+                if (this.#focus.active) return;
+                this.#focus.active = true;
+                this.#focus.eye = Math.random() < 0.5 ? 'left' : 'right';
+                const duration = 400, hold = 3000;
+                const animate = (start, mode = 'in') => {
+                    const elapsed = Date.now() - start;
+                    if (mode === 'in') {
+                        this.#focus.progress = Math.min(1, elapsed / duration);
+                        if (elapsed >= duration) setTimeout(() => animate(Date.now(), 'out'), hold);
+                        else requestAnimationFrame(() => animate(start, mode));
+                    } else {
+                        this.#focus.progress = Math.max(0, 1 - (elapsed / duration));
+                        if (elapsed >= duration) {
+                            this.#focus.active = false;
+                            this.#focus.last = Date.now();
+                            this.#focus.next = 5000 + Math.random() * 5000;
+                        } else requestAnimationFrame(() => animate(start, mode));
+                    }
+                };
+                requestAnimationFrame(animate.bind(null, Date.now()));
+            }
+
+            #blinkEyes() {
+                if (this.#blink.active) return;
+                this.#blink.active = true;
+                this.#blink.last = Date.now();
+                const duration = 150;
+                const animate = start => {
+                    const elapsed = Date.now() - start;
+                    if (elapsed < duration) this.#blink.progress = 1 - (elapsed / duration);
+                    else if (elapsed < duration * 2) this.#blink.progress = (elapsed - duration) / duration;
+                    else {
+                        this.#blink.progress = 1;
+                        this.#blink.active = false;
+                        return;
+                    }
+                    requestAnimationFrame(animate.bind(null, start));
+                };
+                requestAnimationFrame(animate.bind(null, Date.now()));
+            }
+
+            #initInteractions() {
+                const getPos = e => ({
+                    x: e.clientX || e.touches?.[0]?.clientX || 0,
+                    y: e.clientY || e.touches?.[0]?.clientY || 0
+                });
+
+                let isDown = false, startPos = { x: 0, y: 0 }, startTime = 0;
+
+                const onDown = e => {
+                    if (e.target.closest('#chat-container-wrapper')) return;
+                    isDown = true;
+                    startPos = getPos(e);
+                    startTime = Date.now();
+                };
+
+                const onMove = e => {
+                    if (this.#state.sleeping) return;
+                    this.wake();
+                    const { x, y } = getPos(e);
+                    const max = 15;
+                    const bcr = document.body.getBoundingClientRect();
+                    this.#look.x = (x / bcr.width - 0.5) * 2 * max;
+                    this.#look.y = (y / bcr.height - 0.5) * 2 * max;
+                };
+
+                const onUp = e => {
+                    if (!isDown) return;
+                    isDown = false;
+                    const pos = getPos(e.changedTouches?.[0] || e);
+                    const dist = Math.hypot(pos.x - startPos.x, pos.y - startPos.y);
+                    const duration = Date.now() - startTime;
+                    if (e.target.id === 'faceCanvas') {
+                        if (duration < 200 && dist < 10) this.#handleHit();
+                        else if (duration > 200 && duration < 600 && dist > 20) this.heart();
+                    }
+                };
+
+                window.addEventListener('mousedown', onDown);
+                window.addEventListener('touchstart', onDown, { passive: true });
+                window.addEventListener('mousemove', onMove);
+                window.addEventListener('touchmove', onMove, { passive: true });
+                window.addEventListener('mouseup', onUp);
+                window.addEventListener('touchend', onUp);
+            }
+
+            #handleHit() {
+                this.wake();
+                clearTimeout(this.#punishment.resetTimer);
+                this.#punishment.hits++;
+                if (this.#punishment.hits === 1) {
+                    this.#chat.addMessage('به من دست نزن', 'bot');
+                } else {
+                    this.#triggerPunishment();
+                }
+                this.#punishment.resetTimer = setTimeout(() => this.#resetPunishment(), 10000);
+            }
+
+            #triggerPunishment() {
+                this.#resetVisuals();
+                this.#punishment.active = true;
+                const types = ['redEyes', 'rotate', 'shake', 'blur'];
+                this.#punishment.type = types[Math.floor(Math.random() * types.length)];
+                if (this.#punishment.type !== 'redEyes') document.body.classList.add(`punishment-${this.#punishment.type}`);
+            }
+
+            #resetVisuals() {
+                document.body.classList.remove('punishment-rotate', 'punishment-shake', 'punishment-blur');
+            }
+
+            #resetPunishment() {
+                this.#punishment.active = false;
+                this.#punishment.type = null;
+                this.#punishment.hits = 0;
+                this.#resetVisuals();
+            }
+
+            wake() {
+                if (this.#state.sleeping) this.#state.sleeping = false;
+                this.#state.lastInteraction = Date.now();
+            }
+
+            flicker(callback) {
+                this.#state.sleeping = false;
+                let count = 0, max = 6;
+                const tick = () => {
+                    if (count >= max) return callback?.();
+                    this.#blink.progress = Math.random() > 0.3 ? 1 : 0.1;
+                    count++;
+                    setTimeout(tick, 50 + Math.random() * 50);
+                };
+                tick();
+            }
+
+            heart() {
+                this.wake();
+                clearTimeout(this.#timers.expression);
+                this.#state.expression = 'heart';
+                this.#timers.expression = setTimeout(() => (this.#state.expression = 'neutral'), 4000);
+            }
+
+            think() { this.wake(); this.#state.thinking = true; }
+            stopThinking() { this.#state.thinking = false; }
+        }
+
+        // ☬SHΞN™ - Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatForm = document.getElementById('chat-form');
+            const userInput = document.getElementById('user-input');
+            const chatHistory = document.getElementById('chat-history');
+            const sendButton = chatForm.querySelector('button');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const footer = document.querySelector('.footer');
+            const introOverlay = document.getElementById('intro-overlay');
+            const appContainer = document.getElementById('app-container');
+
+            let hasIntroPlayed = false, isFirstMessage = true;
+
+            const addMessage = (msg, sender) => {
+                const div = document.createElement('div');
+                div.classList.add('message', sender);
+                div.textContent = msg;
+                chatHistory.prepend(div);
+            };
+
+            const shenBot = new ShenBot(document.getElementById('faceCanvas'), { addMessage });
+
+            introOverlay.addEventListener('click', () => {
+                if (hasIntroPlayed) return;
+                hasIntroPlayed = true;
+                introOverlay.style.opacity = '0';
+                setTimeout(() => (introOverlay.style.display = 'none'), 500);
+                shenBot.flicker(() => {
+                    appContainer.classList.add('intro-played');
+                    setTimeout(() => {
+                        document.documentElement.classList.add('layout-settled');
+                        document.body.classList.add('layout-settled');
+                        footer.textContent = 'Exclusive ☬SHΞN™';
+                    }, 3500);
+                });
+            }, { once: true });
+
+            chatForm.addEventListener('submit', async e => {
+                e.preventDefault();
+                const message = userInput.value.trim();
+                if (!message) return;
+
+                addMessage(message, 'user');
+                userInput.value = '';
+                sendButton.disabled = true;
+                loadingIndicator.style.display = 'block';
+                shenBot.think();
+
+                try {
+                    const ipResponse = await fetch('https://api.ipify.org?format=json');
+                    const { ip } = await ipResponse.json();
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (isFirstMessage) headers['X-First-Message'] = 'true';
+                    const response = await fetch('/.netlify/functions/chat', {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify({ userMessage: message, userIp: ip, currentTime: new Date().toLocaleTimeString('fa-IR') })
+                    });
+                    const { response: botResponse } = await response.json();
+                    if (response.ok) addMessage(botResponse, 'bot');
+                    else addMessage('یه جای کار می‌لنگه، به شروین می‌گم درستش کنه!', 'bot');
+                } catch {
+                    addMessage('اینترنتت انگار قاطی کرده، چک کن!', 'bot');
+                } finally {
+                    sendButton.disabled = false;
+                    loadingIndicator.style.display = 'none';
+                    shenBot.stopThinking();
+                    isFirstMessage = false;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
